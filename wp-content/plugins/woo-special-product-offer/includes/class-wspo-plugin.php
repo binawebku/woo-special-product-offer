@@ -52,6 +52,7 @@ if ( ! class_exists( 'WSPO_Plugin' ) ) {
 
             if ( is_admin() ) {
                 require_once WSPO_PLUGIN_DIR . 'includes/class-wspo-settings.php';
+                require_once WSPO_PLUGIN_DIR . 'includes/class-wspo-subscribers.php';
             }
         }
 
@@ -63,6 +64,7 @@ if ( ! class_exists( 'WSPO_Plugin' ) ) {
 
             if ( is_admin() ) {
                 WSPO_Settings::instance();
+                WSPO_Subscribers::instance();
             }
 
             WSPO_Frontend::instance();

@@ -1,0 +1,9 @@
+.ws-special-offer-subscribers .wspo-subscribers-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 1.5rem 0;
+}
+
+.ws-special-offer-subscribers .wspo-subscribers-actions form {
+    margin: 0;
+}
