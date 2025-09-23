@@ -1,0 +1,140 @@
+.wspo-purchase-options {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    background-color: #ffffff;
+    box-shadow: 0 10px 30px -20px rgba(15, 23, 42, 0.45);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.wspo-purchase-options:hover {
+    border-color: #cbd5f5;
+    box-shadow: 0 22px 45px -25px rgba(79, 70, 229, 0.35);
+}
+
+.wspo-header {
+    margin-bottom: 1.5rem;
+}
+
+.wspo-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+
+.wspo-helper {
+    margin: 0;
+    color: #4a5568;
+    font-size: 0.95rem;
+}
+
+.wspo-option {
+    border-top: 1px solid #edf2f7;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.wspo-option:first-of-type {
+    border-top: none;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.wspo-option-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    cursor: pointer;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.wspo-option-card:hover {
+    background-color: rgba(79, 70, 229, 0.08);
+}
+
+.wspo-option-card.is-active {
+    background-color: rgba(79, 70, 229, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.25);
+}
+
+.wspo-option-card input[type='radio'] {
+    margin-top: 0.35rem;
+}
+
+.wspo-option-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.wspo-option-title {
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.wspo-option-description {
+    color: #4a5568;
+    font-size: 0.92rem;
+}
+
+.wspo-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+}
+
+.wspo-frequency {
+    margin: 0.75rem 0 0 2.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.wspo-frequency label {
+    font-weight: 500;
+}
+
+.wspo-frequency select {
+    max-width: 220px;
+}
+
+.wspo-hidden {
+    display: none !important;
+}
+
+.wspo-price-note {
+    margin: 0 0 1.25rem;
+    font-weight: 500;
+    color: #4338ca;
+    display: none;
+}
+
+.wspo-price-note.is-visible {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .wspo-purchase-options {
+        padding: 1.25rem;
+    }
+
+    .wspo-option-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .wspo-frequency {
+        margin-left: 0;
+    }
+}
