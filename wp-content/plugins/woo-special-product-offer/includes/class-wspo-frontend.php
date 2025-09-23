@@ -46,6 +46,7 @@ if ( ! class_exists( 'WSPO_Frontend' ) ) {
             add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'restore_cart_item_data' ), 10, 3 );
             add_action( 'woocommerce_before_calculate_totals', array( $this, 'adjust_cart_item_price' ), 10 );
             add_filter( 'woocommerce_get_item_data', array( $this, 'display_cart_item_data' ), 10, 2 );
+            add_action( 'woocommerce_checkout_create_order', array( $this, 'record_subscription_phone' ), 10, 2 );
             add_action( 'woocommerce_checkout_create_order_line_item', array( $this, 'add_order_item_meta' ), 10, 4 );
         }
 
@@ -288,6 +289,71 @@ if ( ! class_exists( 'WSPO_Frontend' ) ) {
             }
 
             return $item_data;
+        }
+
+        /**
+         * Store the subscriber's phone number on the order when relevant.
+         *
+         * @param WC_Order $order Order instance.
+         * @param array    $data  Checkout posted data.
+         */
+        public function record_subscription_phone( $order, $data ) {
+            if ( ! class_exists( 'WC_Order' ) || ! $order instanceof WC_Order ) {
+                return;
+            }
+
+            $cart = null;
+
+            if ( function_exists( 'WC' ) ) {
+                $cart = WC()->cart;
+            }
+
+            if ( ! class_exists( 'WC_Cart' ) || ! $cart instanceof WC_Cart ) {
+                return;
+            }
+
+            $has_subscription = false;
+
+            foreach ( $cart->get_cart() as $values ) {
+                if ( empty( $values['wspo_data'] ) || empty( $values['wspo_data']['type'] ) ) {
+                    continue;
+                }
+
+                if ( 'subscription' === $values['wspo_data']['type'] ) {
+                    $has_subscription = true;
+                    break;
+                }
+            }
+
+            if ( ! $has_subscription ) {
+                return;
+            }
+
+            $phone = '';
+
+            if ( is_array( $data ) && ! empty( $data['billing_phone'] ) && ! is_array( $data['billing_phone'] ) ) {
+                $phone = $data['billing_phone'];
+            } elseif ( method_exists( $order, 'get_billing_phone' ) ) {
+                $phone = $order->get_billing_phone();
+            }
+
+            if ( empty( $phone ) || is_array( $phone ) ) {
+                return;
+            }
+
+            $phone = sanitize_text_field( wp_unslash( $phone ) );
+
+            if ( '' === $phone ) {
+                return;
+            }
+
+            $existing_phone = $order->get_meta( 'wspo_subscription_phone', true );
+
+            if ( $existing_phone === $phone ) {
+                return;
+            }
+
+            $order->update_meta_data( 'wspo_subscription_phone', $phone );
         }
 
         /**
