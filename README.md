@@ -1,6 +1,6 @@
 # Woo Special Product Offer
 
-**Version:** 1.1.0  \
+**Version:** 1.2.0  \
 **Author:** [Wan Mohd Aiman Binawebpro.com]
 
 Woo Special Product Offer is a lightweight WordPress plugin that enriches WooCommerce product pages with a modern “Purchase Options” experience. Customers can easily toggle between one-time purchases and subscriptions, choose their preferred delivery frequency, and instantly understand how much they will save. Behind the scenes the plugin keeps the cart, checkout, and resulting orders in sync with each shopper’s selection.
@@ -11,6 +11,7 @@ Woo Special Product Offer is a lightweight WordPress plugin that enriches WooCom
 - Customisable discount engine for subscription purchases with flexible frequency options.
 - Cart, checkout, and order meta automatically display the customer’s choices.
 - Admin controls tucked neatly under **WooCommerce → Special Offer**.
+- Dedicated **WSPO Subscribers** admin screen (and matching admin bar shortcut) to review and export subscriber contact details.
 - Crafted with clean, modern code that stays out of the way of your storefront styling.
 
 ## Requirements
@@ -49,6 +50,12 @@ All settings are stored as a single option (`wspo_settings`) making backup and d
 - Subscription items receive the configured percentage discount during `woocommerce_before_calculate_totals` and whenever carts are restored from the session.
 - Cart, checkout, and order summaries automatically surface the purchase type, chosen frequency, and savings so both the shopper and fulfilment teams stay informed.
 - Subscriber billing phone numbers are copied into the `wspo_subscription_phone` order meta key, visible from the **Custom Fields** panel when viewing an order in the WooCommerce admin.
+
+## Subscriber reporting
+
+- Access the dedicated report via the **WSPO Subscribers** top-level menu in the WordPress dashboard or the matching shortcut in the admin bar.
+- The report queries WooCommerce orders that captured the `wspo_subscription_phone` meta value and displays the order ID, customer name/email, phone number, and order date in a sortable table.
+- Use the **Export CSV** button to trigger an authenticated download powered by the `admin_post_wspo_export_subscribers` action so you can share subscriber details with marketing or CRM tools.
 
 ## Usage tips
 

@@ -3,7 +3,7 @@
  * Plugin Name:       Woo Special Product Offer
  * Plugin URI:        https://binawebpro.com/woo-special-product-offer
  * Description:       Adds modern purchase option controls to WooCommerce products so customers can choose between one-time purchases and subscriptions.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            [Wan Mohd Aiman Binawebpro.com]
  * Author URI:        https://binawebpro.com
  * Text Domain:       woo-special-product-offer
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'WSPO_VERSION', '1.1.0' );
+define( 'WSPO_VERSION', '1.2.0' );
 define( 'WSPO_PLUGIN_FILE', __FILE__ );
 define( 'WSPO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WSPO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
