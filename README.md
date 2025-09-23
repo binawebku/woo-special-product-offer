@@ -1,6 +1,6 @@
 # Woo Special Product Offer
 
-**Version:** 1.0.0  \
+**Version:** 1.1.0  \
 **Author:** [Wan Mohd Aiman Binawebpro.com]
 
 Woo Special Product Offer is a lightweight WordPress plugin that enriches WooCommerce product pages with a modern “Purchase Options” experience. Customers can easily toggle between one-time purchases and subscriptions, choose their preferred delivery frequency, and instantly understand how much they will save. Behind the scenes the plugin keeps the cart, checkout, and resulting orders in sync with each shopper’s selection.
@@ -48,6 +48,7 @@ All settings are stored as a single option (`wspo_settings`) making backup and d
 - Customer selections are sanitised and stored inside cart item data with a base price snapshot.
 - Subscription items receive the configured percentage discount during `woocommerce_before_calculate_totals` and whenever carts are restored from the session.
 - Cart, checkout, and order summaries automatically surface the purchase type, chosen frequency, and savings so both the shopper and fulfilment teams stay informed.
+- Subscriber billing phone numbers are copied into the `wspo_subscription_phone` order meta key, visible from the **Custom Fields** panel when viewing an order in the WooCommerce admin.
 
 ## Usage tips
 
