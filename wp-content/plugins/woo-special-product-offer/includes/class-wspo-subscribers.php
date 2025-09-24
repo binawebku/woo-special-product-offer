@@ -513,6 +513,20 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
             $order_ids   = array();
             $total_items = 0;
 
+            if ( $results instanceof stdClass ) {
+                $orders      = isset( $results->orders ) ? (array) $results->orders : array();
+                $total_items = isset( $results->total ) ? (int) $results->total : count( $orders );
+
+                $results = array(
+                    'orders' => $orders,
+                    'total'  => $total_items,
+                );
+            } elseif ( is_object( $results ) ) {
+                $results            = (array) $results;
+                $results['orders']  = isset( $results['orders'] ) ? (array) $results['orders'] : array();
+                $results['total']   = isset( $results['total'] ) ? (int) $results['total'] : count( $results['orders'] );
+            }
+
             if ( isset( $results['orders'] ) && is_array( $results['orders'] ) ) {
                 $order_ids   = $results['orders'];
                 $total_items = isset( $results['total'] ) ? (int) $results['total'] : count( $order_ids );
