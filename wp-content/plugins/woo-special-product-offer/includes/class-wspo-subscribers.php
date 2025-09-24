@@ -181,6 +181,7 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                         <input type="hidden" name="action" value="wspo_export_subscribers" />
                         <input type="hidden" name="orderby" value="<?php echo esc_attr( $table->get_orderby_value() ); ?>" />
                         <input type="hidden" name="order" value="<?php echo esc_attr( $table->get_order_value() ); ?>" />
+                        <input type="hidden" name="phone_filter" value="<?php echo esc_attr( $table->get_phone_filter_value() ); ?>" />
                         <?php wp_nonce_field( 'wspo_export_subscribers', '_wspo_export_nonce', false ); ?>
                         <?php submit_button( __( 'Export CSV', 'woo-special-product-offer' ), 'secondary', 'wspo-export-subscribers', false ); ?>
                     </form>
@@ -216,6 +217,13 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
             $order   = isset( $_POST['order'] ) ? strtoupper( sanitize_text_field( wp_unslash( $_POST['order'] ) ) ) : 'DESC';
             $order   = 'ASC' === $order ? 'ASC' : 'DESC';
 
+            $phone_filter = isset( $_POST['phone_filter'] ) ? sanitize_key( wp_unslash( $_POST['phone_filter'] ) ) : 'with_phone';
+            $allowed      = array( 'with_phone', 'all' );
+
+            if ( ! in_array( $phone_filter, $allowed, true ) ) {
+                $phone_filter = 'with_phone';
+            }
+
             $order_map = array(
                 'id'   => 'ID',
                 'date' => 'date',
@@ -230,6 +238,7 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                     'orderby'  => $orderby,
                     'order'    => $order,
                     'return'   => 'ids',
+                    'phone_filter' => $phone_filter,
                 )
             );
 
@@ -273,10 +282,17 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                     $name = __( 'Guest customer', 'woo-special-product-offer' );
                 }
 
-                $email = $order->get_billing_email();
-                $phone = $order->get_meta( 'wspo_subscription_phone', true );
-                $date  = $order->get_date_created();
-                $date  = $date ? wc_format_datetime( $date ) : '';
+                $email      = $order->get_billing_email();
+                $phone      = $order->get_meta( 'wspo_subscription_phone', true );
+                $phone      = is_string( $phone ) ? trim( $phone ) : '';
+                $normalized = preg_replace( '/[^0-9]/', '', $phone );
+
+                if ( 'with_phone' === $phone_filter && '' === $normalized ) {
+                    continue;
+                }
+
+                $date = $order->get_date_created();
+                $date = $date ? wc_format_datetime( $date ) : '';
 
                 fputcsv(
                     $output,
@@ -298,7 +314,11 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
         /**
          * Run a subscriber-focused order query.
          *
-         * @param array $args Query arguments.
+         * @param array $args {
+         *     Query arguments.
+         *
+         *     @type string $phone_filter Restrict results by subscription phone ('with_phone' or 'all').
+         * }
          * @return array
          */
         public static function get_subscriber_orders( $args = array() ) {
@@ -314,9 +334,19 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                 'orderby'  => 'date',
                 'order'    => 'DESC',
                 'type'     => 'shop_order',
+                'phone_filter' => 'with_phone',
             );
 
             $query_args = wp_parse_args( $args, $defaults );
+
+            $allowed_phone_filters = array( 'with_phone', 'all' );
+            $phone_filter          = isset( $query_args['phone_filter'] ) ? sanitize_key( $query_args['phone_filter'] ) : 'with_phone';
+
+            if ( ! in_array( $phone_filter, $allowed_phone_filters, true ) ) {
+                $phone_filter = 'with_phone';
+            }
+
+            $query_args['phone_filter'] = $phone_filter;
 
             if ( function_exists( 'wc_get_order_statuses' ) && empty( $query_args['status'] ) ) {
                 $query_args['status'] = array_keys( wc_get_order_statuses() );
@@ -368,12 +398,20 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                     );
                 }
 
-                $conditions = array(
-                    'om.meta_key = %s',
-                    "om.meta_value <> ''",
-                );
+                $orders_table      = $wpdb->prefix . 'wc_orders';
+                $orders_meta_table = $wpdb->prefix . 'wc_orders_meta';
+                $conditions        = array();
+                $params            = array();
+                $join_clause       = '';
 
-                $params = array( 'wspo_subscription_phone' );
+                if ( 'with_phone' === $phone_filter ) {
+                    $join_clause = "INNER JOIN {$orders_meta_table} om ON o.id = om.order_id AND om.meta_key = %s";
+                    $params[]    = 'wspo_subscription_phone';
+                    $conditions[] = "om.meta_value <> ''";
+                } else {
+                    $join_clause = "LEFT JOIN {$orders_meta_table} om ON o.id = om.order_id AND om.meta_key = %s";
+                    $params[]    = 'wspo_subscription_phone';
+                }
 
                 if ( ! empty( $types ) ) {
                     $conditions[] = 'o.type IN (' . implode( ', ', array_fill( 0, count( $types ), '%s' ) ) . ')';
@@ -385,12 +423,15 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                     $params       = array_merge( $params, $statuses );
                 }
 
-                $where_sql         = 'WHERE ' . implode( ' AND ', $conditions );
-                $orders_table      = $wpdb->prefix . 'wc_orders';
-                $orders_meta_table = $wpdb->prefix . 'wc_orders_meta';
-                $base_sql          = "FROM {$orders_table} o INNER JOIN {$orders_meta_table} om ON o.id = om.order_id {$where_sql}";
-                $select_sql        = "SELECT DISTINCT o.id {$base_sql} ORDER BY {$orderby_clause} {$order}";
-                $select_params     = $params;
+                $where_sql = '';
+
+                if ( ! empty( $conditions ) ) {
+                    $where_sql = 'WHERE ' . implode( ' AND ', $conditions );
+                }
+
+                $base_sql      = "FROM {$orders_table} o {$join_clause} {$where_sql}";
+                $select_sql    = "SELECT DISTINCT o.id {$base_sql} ORDER BY {$orderby_clause} {$order}";
+                $select_params = $params;
 
                 if ( $limit > 0 ) {
                     $select_sql    .= ' LIMIT %d OFFSET %d';
@@ -437,13 +478,21 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
                 $meta_query = $query_args['meta_query'];
             }
 
-            $meta_query[] = array(
-                'key'     => 'wspo_subscription_phone',
-                'value'   => '',
-                'compare' => '!=',
-            );
+            if ( 'with_phone' === $phone_filter ) {
+                $meta_query[] = array(
+                    'key'     => 'wspo_subscription_phone',
+                    'value'   => '',
+                    'compare' => '!=',
+                );
+            }
 
-            $query_args['meta_query'] = $meta_query;
+            if ( ! empty( $meta_query ) ) {
+                $query_args['meta_query'] = $meta_query;
+            } else {
+                unset( $query_args['meta_query'] );
+            }
+
+            unset( $query_args['phone_filter'] );
 
             $query = new WC_Order_Query( $query_args );
 
@@ -474,6 +523,13 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
         protected $order = 'DESC';
 
         /**
+         * Current phone filter mode.
+         *
+         * @var string
+         */
+        protected $phone_filter = 'with_phone';
+
+        /**
          * Prepare items for display.
          */
         public function prepare_items() {
@@ -492,6 +548,15 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
             $this->orderby = array_key_exists( $orderby, $sortable ) ? $orderby : 'date';
             $this->order   = 'ASC' === $order ? 'ASC' : 'DESC';
 
+            $phone_filter = isset( $_GET['phone_filter'] ) ? sanitize_key( wp_unslash( $_GET['phone_filter'] ) ) : 'with_phone';
+            $allowed      = array( 'with_phone', 'all' );
+
+            if ( ! in_array( $phone_filter, $allowed, true ) ) {
+                $phone_filter = 'with_phone';
+            }
+
+            $this->phone_filter = $phone_filter;
+
             $order_map = array(
                 'id'   => 'ID',
                 'date' => 'date',
@@ -507,6 +572,7 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
                     'orderby'  => $query_orderby,
                     'order'    => $this->order,
                     'return'   => 'ids',
+                    'phone_filter' => $this->phone_filter,
                 )
             );
 
@@ -556,17 +622,25 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
                     $name = __( 'Guest customer', 'woo-special-product-offer' );
                 }
 
-                $email = $order->get_billing_email();
-                $phone = $order->get_meta( 'wspo_subscription_phone', true );
-                $date  = $order->get_date_created();
-                $date  = $date ? wc_format_datetime( $date ) : '';
+                $email       = $order->get_billing_email();
+                $phone_value = $order->get_meta( 'wspo_subscription_phone', true );
+                $phone_value = is_string( $phone_value ) ? trim( $phone_value ) : '';
+                $normalized  = preg_replace( '/[^0-9]/', '', $phone_value );
+
+                if ( 'with_phone' === $this->phone_filter && '' === $normalized ) {
+                    continue;
+                }
+
+                $date = $order->get_date_created();
+                $date = $date ? wc_format_datetime( $date ) : '';
 
                 $items[] = array(
-                    'order_id' => $order->get_id(),
-                    'customer' => $name,
-                    'email'    => $email,
-                    'phone'    => $phone,
-                    'date'     => $date,
+                    'order_id'         => $order->get_id(),
+                    'customer'         => $name,
+                    'email'            => $email,
+                    'phone'            => $phone_value,
+                    'phone_normalized' => $normalized,
+                    'date'             => $date,
                 );
             }
 
@@ -584,6 +658,43 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
         }
 
         /**
+         * Output additional controls above the table.
+         *
+         * @param string $which Current table location.
+         */
+        protected function extra_tablenav( $which ) {
+            if ( 'top' !== $which ) {
+                return;
+            }
+
+            $label   = __( 'Filter by subscription phone', 'woo-special-product-offer' );
+            $current = $this->phone_filter;
+            $options = array(
+                'with_phone' => __( 'With phone number', 'woo-special-product-offer' ),
+                'all'        => __( 'All subscribers', 'woo-special-product-offer' ),
+            );
+
+            echo '<div class="alignleft actions">';
+            echo '<label class="screen-reader-text" for="wspo-filter-by-phone">' . esc_html( $label ) . '</label>';
+            echo '<select name="phone_filter" id="wspo-filter-by-phone">';
+
+            foreach ( $options as $value => $text ) {
+                printf(
+                    '<option value="%1$s"%2$s>%3$s</option>',
+                    esc_attr( $value ),
+                    selected( $current, $value, false ),
+                    esc_html( $text )
+                );
+            }
+
+            echo '</select>';
+
+            submit_button( __( 'Filter', 'woo-special-product-offer' ), '', 'filter_action', false );
+
+            echo '</div>';
+        }
+
+        /**
          * Retrieve the columns for the table.
          *
          * @return array
@@ -594,6 +705,7 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
                 'customer' => __( 'Customer', 'woo-special-product-offer' ),
                 'email'    => __( 'Email', 'woo-special-product-offer' ),
                 'phone'    => __( 'Subscription Phone', 'woo-special-product-offer' ),
+                'whatsapp' => __( 'WhatsApp', 'woo-special-product-offer' ),
                 'date'     => __( 'Order Date', 'woo-special-product-offer' ),
             );
         }
@@ -623,6 +735,43 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
             }
 
             return '';
+        }
+
+        /**
+         * Render the WhatsApp action column.
+         *
+         * @param array $item Current row.
+         * @return string
+         */
+        protected function column_whatsapp( $item ) {
+            $normalized = isset( $item['phone_normalized'] ) ? (string) $item['phone_normalized'] : '';
+
+            if ( '' === $normalized ) {
+                return sprintf(
+                    '<span class="wspo-whatsapp-unavailable">%s</span>',
+                    esc_html__( 'No number', 'woo-special-product-offer' )
+                );
+            }
+
+            $display_phone = isset( $item['phone'] ) ? (string) $item['phone'] : '';
+            $url           = 'https://wa.me/' . rawurlencode( $normalized );
+
+            if ( '' !== $display_phone ) {
+                $aria_label = sprintf(
+                    /* translators: %s: subscriber phone number. */
+                    __( 'Open WhatsApp chat with %s', 'woo-special-product-offer' ),
+                    $display_phone
+                );
+            } else {
+                $aria_label = __( 'Open WhatsApp', 'woo-special-product-offer' );
+            }
+
+            return sprintf(
+                '<a class="button button-small wspo-whatsapp-button" href="%1$s" target="_blank" rel="noopener noreferrer" aria-label="%2$s">%3$s</a>',
+                esc_url( $url ),
+                esc_attr( $aria_label ),
+                esc_html__( 'Open WhatsApp', 'woo-special-product-offer' )
+            );
         }
 
         /**
@@ -660,6 +809,15 @@ if ( ! class_exists( 'WSPO_Subscriber_List_Table' ) ) {
          */
         public function get_order_value() {
             return $this->order;
+        }
+
+        /**
+         * Get the current phone filter selection.
+         *
+         * @return string
+         */
+        public function get_phone_filter_value() {
+            return $this->phone_filter;
         }
     }
 }

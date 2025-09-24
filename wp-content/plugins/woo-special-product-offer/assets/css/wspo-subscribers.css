@@ -7,3 +7,26 @@
 .ws-special-offer-subscribers .wspo-subscribers-actions form {
     margin: 0;
 }
+
+.ws-special-offer-subscribers .wspo-whatsapp-button {
+    background-color: #25d366;
+    border-color: #25d366;
+    color: #ffffff;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.ws-special-offer-subscribers .wspo-whatsapp-button:hover,
+.ws-special-offer-subscribers .wspo-whatsapp-button:focus {
+    background-color: #1ebc57;
+    border-color: #1ebc57;
+    color: #ffffff;
+}
+
+.ws-special-offer-subscribers .wspo-whatsapp-button:focus {
+    box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px rgba(37, 211, 102, 0.45);
+}
+
+.ws-special-offer-subscribers .wspo-whatsapp-unavailable {
+    color: #6c7781;
+}
