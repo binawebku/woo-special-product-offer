@@ -318,6 +318,119 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
 
             $query_args = wp_parse_args( $args, $defaults );
 
+            if ( function_exists( 'wc_get_order_statuses' ) && empty( $query_args['status'] ) ) {
+                $query_args['status'] = array_keys( wc_get_order_statuses() );
+            }
+
+            $using_hpos = class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' )
+                && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+
+            if ( $using_hpos ) {
+                global $wpdb;
+
+                $limit  = isset( $query_args['limit'] ) ? (int) $query_args['limit'] : 20;
+                $page   = max( 1, (int) $query_args['page'] );
+                $offset = ( $limit > 0 ) ? ( ( $page - 1 ) * $limit ) : 0;
+
+                $order   = ( 'ASC' === strtoupper( $query_args['order'] ) ) ? 'ASC' : 'DESC';
+                $orderby = strtolower( $query_args['orderby'] );
+
+                switch ( $orderby ) {
+                    case 'id':
+                        $orderby_clause = 'o.id';
+                        break;
+                    case 'date':
+                    default:
+                        $orderby_clause = 'o.date_created_gmt';
+                        break;
+                }
+
+                $types = array();
+
+                if ( ! empty( $query_args['type'] ) ) {
+                    $types = array_map( 'sanitize_key', (array) $query_args['type'] );
+                }
+
+                $statuses = array();
+
+                if ( ! empty( $query_args['status'] ) ) {
+                    $statuses = array_map(
+                        static function( $status ) {
+                            $status = sanitize_key( $status );
+
+                            if ( 0 === strpos( $status, 'wc-' ) ) {
+                                return $status;
+                            }
+
+                            return 'wc-' . $status;
+                        },
+                        (array) $query_args['status']
+                    );
+                }
+
+                $conditions = array(
+                    'om.meta_key = %s',
+                    "om.meta_value <> ''",
+                );
+
+                $params = array( 'wspo_subscription_phone' );
+
+                if ( ! empty( $types ) ) {
+                    $conditions[] = 'o.type IN (' . implode( ', ', array_fill( 0, count( $types ), '%s' ) ) . ')';
+                    $params       = array_merge( $params, $types );
+                }
+
+                if ( ! empty( $statuses ) ) {
+                    $conditions[] = 'o.status IN (' . implode( ', ', array_fill( 0, count( $statuses ), '%s' ) ) . ')';
+                    $params       = array_merge( $params, $statuses );
+                }
+
+                $where_sql         = 'WHERE ' . implode( ' AND ', $conditions );
+                $orders_table      = $wpdb->prefix . 'wc_orders';
+                $orders_meta_table = $wpdb->prefix . 'wc_orders_meta';
+                $base_sql          = "FROM {$orders_table} o INNER JOIN {$orders_meta_table} om ON o.id = om.order_id {$where_sql}";
+                $select_sql        = "SELECT DISTINCT o.id {$base_sql} ORDER BY {$orderby_clause} {$order}";
+                $select_params     = $params;
+
+                if ( $limit > 0 ) {
+                    $select_sql    .= ' LIMIT %d OFFSET %d';
+                    $select_params[] = $limit;
+                    $select_params[] = $offset;
+                }
+
+                $prepared_select = $wpdb->prepare( $select_sql, $select_params );
+                $order_ids       = $prepared_select ? $wpdb->get_col( $prepared_select ) : array();
+
+                $order_ids = array_map( 'absint', (array) $order_ids );
+
+                $return_type = isset( $query_args['return'] ) ? $query_args['return'] : 'ids';
+                $return_type = is_string( $return_type ) ? strtolower( $return_type ) : 'ids';
+
+                if ( 'objects' === $return_type ) {
+                    $orders = array_filter( array_map( 'wc_get_order', $order_ids ) );
+                } else {
+                    $orders = $order_ids;
+                }
+
+                if ( ! empty( $query_args['paginate'] ) ) {
+                    $prepared_count = $wpdb->prepare( "SELECT COUNT( DISTINCT o.id ) {$base_sql}", $params );
+                    $total          = $prepared_count ? (int) $wpdb->get_var( $prepared_count ) : 0;
+                    $max_pages      = 1;
+
+                    if ( $limit > 0 ) {
+                        $max_pages = max( 1, (int) ceil( $total / $limit ) );
+                    }
+
+                    return array(
+                        'orders'        => array_values( $orders ),
+                        'total'         => $total,
+                        'max_num_pages' => $max_pages,
+                    );
+                }
+
+                return array_values( $orders );
+            }
+
             $meta_query = array();
 
             if ( ! empty( $query_args['meta_query'] ) && is_array( $query_args['meta_query'] ) ) {
@@ -331,10 +444,6 @@ if ( ! class_exists( 'WSPO_Subscribers' ) ) {
             );
 
             $query_args['meta_query'] = $meta_query;
-
-            if ( function_exists( 'wc_get_order_statuses' ) && empty( $query_args['status'] ) ) {
-                $query_args['status'] = array_keys( wc_get_order_statuses() );
-            }
 
             $query = new WC_Order_Query( $query_args );
 

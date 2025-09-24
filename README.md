@@ -1,6 +1,6 @@
 # Woo Special Product Offer
 
-**Version:** 1.2.0  \
+**Version:** 1.2.1  \
 **Author:** [Wan Mohd Aiman Binawebpro.com]
 
 Woo Special Product Offer is a lightweight WordPress plugin that enriches WooCommerce product pages with a modern “Purchase Options” experience. Customers can easily toggle between one-time purchases and subscriptions, choose their preferred delivery frequency, and instantly understand how much they will save. Behind the scenes the plugin keeps the cart, checkout, and resulting orders in sync with each shopper’s selection.
